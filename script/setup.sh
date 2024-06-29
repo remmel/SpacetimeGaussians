@@ -8,6 +8,11 @@ conda activate feature_splatting
 conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge
 
 
+# if error below about: /usr/include/c++/11/bits/std_function.h:435:145: error: parameter packs not expanded with ‘...’
+# this is because I have old `nvcc --version` 11.5
+# export CC=/usr/bin/gcc-10
+# export CXX=/usr/bin/g++-10
+
 # Install for Gaussian Rasterization (Ch9) - Ours-Full
 pip install thirdparty/gaussian_splatting/submodules/gaussian_rasterization_ch9
 
@@ -37,6 +42,9 @@ cd ../../
 pip install natsort
 pip install scipy
 pip install kornia
+pip install tqdm
+pip install plyfile
+
 # install colmap for preprocess, work with python3.8
 conda create -n colmapenv python=3.8
 conda activate colmapenv

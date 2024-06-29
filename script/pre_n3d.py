@@ -78,7 +78,7 @@ def preparecolmapdynerf(folder, offset=0):
         imagepath = os.path.join(folder, str(offset) + ".png")
         imagesavepath = os.path.join(savedir, folder.split("/")[-2] + ".png")
 
-        shutil.copy(imagepath, imagesavepath)
+        shutil.copy(imagepath, imagesavepath) #TODo create ln instead or move
 
 
     
