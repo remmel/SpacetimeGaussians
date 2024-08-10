@@ -36,7 +36,7 @@ import natsort
 sys.path.append(".")
 from thirdparty.gaussian_splatting.utils.my_utils import posetow2c_matrcs, rotmat2qvec
 from thirdparty.colmap.pre_colmap import * 
-from thirdparty.gaussian_splatting.helper3dg import getcolmapsinglen3d
+from script.helper_pre import getcolmapsinglen3d
 from thirdparty.gaussian_splatting.colmap_loader import read_extrinsics_binary, read_intrinsics_binary
 
 

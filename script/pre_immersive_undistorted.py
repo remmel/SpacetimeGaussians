@@ -27,82 +27,77 @@ import tqdm
 import numpy as np 
 import shutil
 import pickle
-import natsort 
+import argparse
+import cv2
+import numpy as np
+import os
+import json
+
+import natsort
 import sys 
 import struct
 import pickle
 from scipy.spatial.transform import Rotation
+from pathlib import Path
 sys.path.append(".")
 from thirdparty.gaussian_splatting.utils.my_utils import rotmat2qvec
 from thirdparty.colmap.pre_colmap import * 
-from thirdparty.gaussian_splatting.helper3dg import getcolmapsingleimundistort
+from script.helper_pre import getcolmapsingleimundistort
 from script.pre_n3d import extractframes
 from script.pre_immersive_distorted import softlinkdataset
-
-import argparse
 
 SCALEDICT = {}
 
 
-Immersiveseven = ["01_Welder",  "02_Flames", "04_Truck", "09_Alexa", "10_Alexa", "11_Alexa", "12_Cave"]
-immmersivescaledict = {}
-immmersivescaledict["01_Welder"] = 1.0
-immmersivescaledict["02_Flames"] =1.0
-immmersivescaledict["04_Truck"] = 1.0
-immmersivescaledict["09_Alexa"] = 1.0
-immmersivescaledict["10_Alexa"] = 1.0
-immmersivescaledict["11_Alexa"] = 1.0
-immmersivescaledict["12_Cave"] = 1.0
+immmersivescaledict = {
+    "01_Welder": 1.0,
+    "02_Flames": 1.0,
+    "04_Truck": 1.0,
+    "09_Alexa": 1.0,
+    "10_Alexa": 1.0,
+    "11_Alexa": 1.0,
+    "12_Cave": 1.0
+}
 
+Immersiveseven = list(immmersivescaledict.keys())
 for scene in Immersiveseven:
     SCALEDICT[scene + "_undist"] = 0.5  # 
     immmersivescaledict[scene + "_undist"] = 0.5
 
 
-
-
-
 def convertmodel2dbfiles(path, offset=0, scale=1.0):
-    projectfolder = os.path.join(path, "colmap_" + str(offset))
-    manualfolder = os.path.join(projectfolder, "manual")
+    projectfolder = path / f"colmap_{offset}"
+    manualfolder = projectfolder / "manual"
 
-    # if not os.path.exists(sparsefolder):
-    #     os.makedirs(sparsefolder)
-    if not os.path.exists(manualfolder):
-        os.makedirs(manualfolder)
+    manualfolder.mkdir(exist_ok=True)
 
-    savetxt = os.path.join(manualfolder, "images.txt")
-    savecamera = os.path.join(manualfolder, "cameras.txt")
-    savepoints = os.path.join(manualfolder, "points3D.txt")
+    savetxt = manualfolder / "images.txt"
+    savecamera = manualfolder / "cameras.txt"
+    savepoints = manualfolder / "points3D.txt"
     imagetxtlist = []
     cameratxtlist = []
-    if os.path.exists(os.path.join(projectfolder, "input.db")):
-        os.remove(os.path.join(projectfolder, "input.db"))
 
-    db = COLMAPDatabase.connect(os.path.join(projectfolder, "input.db"))
+    db_file = projectfolder / "input.db"
+    if db_file.exists():
+        db_file.unlink()
+
+    db = COLMAPDatabase.connect(db_file)
 
     db.create_tables()
 
-
-
-    import json 
-    with open(os.path.join(path, "models.json"), "r") as f:
+    with (path / "models.json").open("r") as f:
         meta = json.load(f)
 
-    for idx , camera in enumerate(meta):
+    for idx, camera in enumerate(meta):
         cameraname = camera['name'] # camera_0001
         view = camera
 
- 
         focolength = camera['focal_length'] 
         width, height = camera['width'], camera['height']
         principlepoint =[0,0]
         principlepoint[0] = view['principal_point'][0]
         principlepoint[1] = view['principal_point'][1]
 
-
-
- 
 
         distort1 = view['radial_distortion'][0]
         distort2 = view['radial_distortion'][1]
@@ -116,7 +111,6 @@ def convertmodel2dbfiles(path, offset=0, scale=1.0):
         
         colmapR = w2c[:3, :3]
         T = w2c[:3, 3]
-
 
 
         K = np.array([[focolength, 0, principlepoint[0]], [0, focolength, principlepoint[1]], [0, 0, 1]])
@@ -134,23 +128,15 @@ def convertmodel2dbfiles(path, offset=0, scale=1.0):
         newcy = Knew[1,2]
 
 
-
         colmapQ = rotmat2qvec(colmapR)
 
         imageid = str(idx+1)
         cameraid = imageid
-        pngname = cameraname + ".png"
-        
-        line =  imageid + " "
+        pngname = f"{cameraname}.png"
 
-        for j in range(4):
-            line += str(colmapQ[j]) + " "
-        for j in range(3):
-            line += str(T[j]) + " "
-        line = line  + cameraid + " " + pngname + "\n"
-        empltyline = "\n"
+        line = f"{imageid} " + " ".join(map(str, colmapQ)) + " " + " ".join(map(str, T)) + f" {cameraid} {pngname}\n"
         imagetxtlist.append(line)
-        imagetxtlist.append(empltyline)
+        imagetxtlist.append("\n")
 
         newwidth = width
         newheight = height
@@ -159,34 +145,23 @@ def convertmodel2dbfiles(path, offset=0, scale=1.0):
         camera_id = db.add_camera(1, newwidth, newheight, params)     # RADIAL_FISHEYE                                                                                 # width and height
         #
 
-        cameraline = str(idx+1) + " " + "PINHOLE " + str(newwidth) +  " " + str(newheight) + " " + str(newfocalx) + " " + str(newfocaly)  + " " + str(newcx) + " " + str(newcy)  + "\n"
+        cameraline = f"{idx + 1} PINHOLE {newwidth} {newheight} {newfocalx} {newfocaly} {newcx} {newcy}\n"
         cameratxtlist.append(cameraline)
         image_id = db.add_image(pngname, camera_id,  prior_q=np.array((colmapQ[0], colmapQ[1], colmapQ[2], colmapQ[3])), prior_t=np.array((T[0], T[1], T[2])), image_id=idx+1)
         db.commit()
-        print("commited one")
     db.close()
 
-
-    with open(savetxt, "w") as f:
-        for line in imagetxtlist :
-            f.write(line)
-    with open(savecamera, "w") as f:
-        for line in cameratxtlist :
-            f.write(line)
-    with open(savepoints, "w") as f:
-        pass 
+    savetxt.write_text("".join(imagetxtlist))
+    savecamera.write_text("".join(cameratxtlist))
+    savepoints.write_text("")  # Creating an empty points3D.txt file
 
 
 
 def imageundistort_no_mapper(video, offsetlist=[0],focalscale=1.0, fixfocal=None):
-    import cv2
-    import numpy as np
-    import os 
-    import json 
-    with open(os.path.join(video, "models.json"), "r") as f:
-                meta = json.load(f)
+    with open(video / "models.json", "r") as f:
+        meta = json.load(f)
 
-    for idx , camera in enumerate(meta):
+    for idx, camera in enumerate(tqdm.tqdm(meta, desc="Processing Cameras")):
         folder = camera['name'] # camera_0001
         view = camera
         intrinsics = np.array([[view['focal_length'], 0.0, view['principal_point'][0]],
@@ -195,49 +170,40 @@ def imageundistort_no_mapper(video, offsetlist=[0],focalscale=1.0, fixfocal=None
         dis_cef = np.zeros((4))
 
         dis_cef[:2] = np.array(view['radial_distortion'])[:2]
-        print("done one camera")
         map1, map2 = None, None
         for offset in offsetlist:
-            videofolder = os.path.join(video, folder)
-            imagepath = os.path.join(videofolder, str(offset) + ".png")
-            imagesavepath = os.path.join(video, "colmap_" + str(offset), "input", folder + ".png")
-            
-            
-            inputimagefolder = os.path.join(video, "colmap_" + str(offset), "input")
-            if not os.path.exists(inputimagefolder):
-                os.makedirs(inputimagefolder)
-            assert os.path.exists(imagepath)
-            
-            if not os.path.exists(imagesavepath):
-                try:
-                    image = cv2.imread(imagepath).astype(np.float32) #/ 255.0
-                except:
-                    print("failed to read image", imagepath)
-                    quit()
-                    
-                h, w = image.shape[:2]
+            imagepath = video / folder / f"{offset}.png"
+            imagesavepath = video / f"colmap_{offset}" / "input" / f"{folder}.png"
+            if imagesavepath.exists():
+                continue
 
-                image_size = (w, h)
-                knew = np.zeros((3, 3), dtype=np.float32)
+            inputimagefolder = video / f"colmap_{offset}" / "input"
+            inputimagefolder.mkdir(exist_ok=True)
 
-    
-                knew[0,0] = focalscale * intrinsics[0,0]
-                knew[1,1] = focalscale * intrinsics[1,1]
-                knew[0,2] =  view['principal_point'][0] # cx fixed half of the width
-                knew[1,2] =  view['principal_point'][1] #
-                knew[2,2] =  1.0
+            assert imagepath.exists()
+            image = cv2.imread(imagepath).astype(np.float32) #/ 255.0
+            h, w = image.shape[:2]
+
+            image_size = (w, h)
+            knew = np.zeros((3, 3), dtype=np.float32)
 
 
-                
-                
-                map1, map2 = cv2.fisheye.initUndistortRectifyMap(intrinsics, dis_cef, R=None, P=knew, size=(w, h), m1type=cv2.CV_32FC1)
+            knew[0,0] = focalscale * intrinsics[0,0]
+            knew[1,1] = focalscale * intrinsics[1,1]
+            knew[0,2] =  view['principal_point'][0] # cx fixed half of the width
+            knew[1,2] =  view['principal_point'][1] #
+            knew[2,2] =  1.0
 
-                undistorted_image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT)
-                undistorted_image = undistorted_image.clip(0,255.0).astype(np.uint8)
 
-                cv2.imwrite(imagesavepath, undistorted_image)
-            else:
-                print("already exists")
+
+            map1, map2 = cv2.fisheye.initUndistortRectifyMap(intrinsics, dis_cef, R=None, P=knew, size=(w, h), m1type=cv2.CV_32FC1)
+
+            undistorted_image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT)
+            undistorted_image = undistorted_image.clip(0,255.0).astype(np.uint8)
+
+            cv2.imwrite(imagesavepath, undistorted_image)
+        else:
+            print("already exists")
 
 
 
@@ -247,15 +213,12 @@ def imageundistort_no_mapper(video, offsetlist=[0],focalscale=1.0, fixfocal=None
 
 if __name__ == "__main__" :
     parser = argparse.ArgumentParser()
- 
     parser.add_argument("--videopath", default="", type=str)
     parser.add_argument("--startframe", default=0, type=int)
     parser.add_argument("--endframe", default=50, type=int)
-
-
     args = parser.parse_args()
-    videopath = args.videopath
 
+    videopath = Path(args.videopath)
     startframe = args.startframe
     endframe = args.endframe
     if startframe >= endframe:
@@ -264,21 +227,18 @@ if __name__ == "__main__" :
     if startframe < 0 or endframe > 300:
         print("frame must in range 0-300")
         quit()
-    if not os.path.exists(videopath):
+    if not videopath.exists():
         print("path not exist")
         quit()
-    
-    if not videopath.endswith("/"):
-        videopath = videopath + "/"
 
-    srcscene = videopath.split("/")[-2]
+    srcscene = videopath.name
     if srcscene not in Immersiveseven:
         print("scene not in Immersiveseven", Immersiveseven)
         print("Please check if the scene name is correct")
         quit()
     
 
-    if "04_Trucks" in videopath:
+    if "04_Trucks" == srcscene:
         print('04_Trucks')
         if endframe > 150:
             endframe = 150 
@@ -286,31 +246,25 @@ if __name__ == "__main__" :
     postfix  = "_undist" # undistored cameras
 
     scene = srcscene + postfix
-    originalpath = videopath #
-    originalvideo = originalpath# 43 1
-    dstpath = videopath[:-1] + postfix
-    video = originalpath  # 43 1 
+    dstpath = videopath.with_name(videopath.name + postfix)
+
     scale = immmersivescaledict[scene]
-        
 
-
-    videoslist = glob.glob(originalvideo + "*.mp4")
+    videoslist = list(videopath.glob("*.mp4"))
     for v in tqdm.tqdm(videoslist):
-        extractframes(v)
+        extractframes(v, startframe, endframe)
+
+    softlinkdataset(str(videopath), str(dstpath))
+
+    imageundistort_no_mapper(dstpath, offsetlist=list(range(startframe,endframe)),focalscale=scale, fixfocal=None)
 
 
-    softlinkdataset(originalpath, dstpath, srcscene, scene)
-
-    imageundistort_no_mapper(dstpath, offsetlist=[i for i in range(startframe,endframe)],focalscale=scale, fixfocal=None)
-  
-    
     try:
-        for offset in tqdm.tqdm(range(startframe, endframe)):
+        for offset in tqdm.tqdm(range(startframe, endframe), desc="convertmodel2dbfiles"):
             convertmodel2dbfiles(dstpath, offset=offset, scale=scale)
     except:
         print("create colmap input failed, better clean the data and try again")
         quit()
 
-    for offset in range(0, 50):
+    for offset in range(startframe, endframe):
         getcolmapsingleimundistort(dstpath, offset=offset)
-
