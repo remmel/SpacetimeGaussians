@@ -16,6 +16,9 @@ conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit
 ```
 
 ```shell
+git clone git@github.com:remmel/SpacetimeGaussians.git
+cd SpacetimeGaussians
+
 # Install for Gaussian Rasterization (Ch9) - Ours-Full
 pip install thirdparty/gaussian_splatting/submodules/gaussian_rasterization_ch9
 # Install for Gaussian Rasterization (Ch3) - Ours-Lite
@@ -31,6 +34,10 @@ pip install thirdparty/gaussian_splatting/submodules/simple-knn
 
 ```shell
 # Install MMCV for CUDA KNN, used for init point sampling, reduce number of points when sfm points are too many
+
+# Below export to avoid: UserWarning: There are no g++ version bounds defined for CUDA version 11.5
+export CC=/usr/bin/gcc-10
+export CXX=/usr/bin/g++-10
 cd thirdparty
 git clone https://github.com/open-mmlab/mmcv.git
 cd mmcv
@@ -84,11 +91,16 @@ cd ../../SpacetimeGaussian
 python script/pre_immersive_distorted.py --videopath ../dataset/immersive/02_Flames
 python script/pre_immersive_undistorted.py --videopath ../dataset/immersive/02_Flames
 
-cp configs/im_view/04_Truck/pickview.pkl ../dataset/immersive/02_Flames_dist/
-
 # Train - undistorted
 python train.py --gtmask 1 --config configs/im_undistort_lite/02_Flames.json --model_path log/02_Flames_undist/01 --source_path ../dataset/immersive/02_Flames_undist/colmap_0 
 
 # Train - distorted - not enough GPU
-PYTHONDONTWRITEBYTECODE=1 python train_imdist.py --eval --config configs/im_distort_full/02_Flames.json --model_path log/02_Flames/dist --source_path ../dataset/immersive/02_Flames_dist/colmap_0 
+cp configs/im_view/04_Truck/pickview.pkl ../dataset/immersive/02_Flames_dist/
+PYTHONDONTWRITEBYTECODE=1 python train_imdist.py --eval --config configs/im_distort_lite/02_Flames.json --model_path log/02_Flames/dist --source_path ../dataset/immersive/02_Flames_dist/colmap_0 
 ```
+
+# Troubleshooting
+
+## OSError: [Errno 24] Too many open files
+`ulimit -n 1000000`
+https://askubuntu.com/questions/1182021/too-many-open-files
