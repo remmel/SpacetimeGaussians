@@ -73,7 +73,7 @@ def preparecolmapdynerf(folder, offset=0):
 
         assert imagepath.exists
         # shutil.copy(imagepath, imagesavepath)
-        imagesavepath.symlink_to(imagepath)
+        imagesavepath.symlink_to(imagepath.resolve())
         assert imagesavepath.exists() # randomly, the created link is broken, don't know why
         assert imagesavepath.is_symlink()
     

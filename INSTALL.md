@@ -9,10 +9,16 @@ sudo apt install gcc-10 g++-10 gcc g++ unzip
 ```
 
 ```shell
-conda create -n spacetime python=3.7.13 -y
+conda deactivate
+conda env remove -n spacetime -y
+conda create -n spacetime python=3.7 -y
 conda activate spacetime
-conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge -y
-
+conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 "mkl=2024.0" -c pytorch -c conda-forge
+python -c "import torch; print(torch.cuda.is_available())"
+conda install -c "nvidia/label/cuda-11.6.2" cuda-toolkit
+#conda install -c nvidia cuda-toolkit=11.6 -y
+#pip install torch==1.12.1+cu116 torchvision==0.13.1+cu116 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu116 #as indicated here https://pytorch.org/get-started/previous-versions/
+nvcc --version #must displays 11.6
 ```
 
 ```shell
@@ -24,11 +30,11 @@ cd SpacetimeGaussians
 export CC=/usr/bin/gcc-10 # if "error: parameter packs not expanded with ‘...’" or "UserWarning: There are no g++ version bounds defined for CUDA version 11.5"
 export CXX=/usr/bin/g++-10
 # Install for Gaussian Rasterization (Ch9) - Ours-Full
-pip install thirdparty/gaussian_splatting/submodules/gaussian_rasterization_ch9
+#pip install thirdparty/gaussian_splatting/submodules/gaussian_rasterization_ch9
 # Install for Gaussian Rasterization (Ch3) - Ours-Lite
 pip install thirdparty/gaussian_splatting/submodules/gaussian_rasterization_ch3
 # Install for Forward Full - Ours-Full (speed up testing, mlp fused, no sigmoid)
-pip install thirdparty/gaussian_splatting/submodules/forward_full
+#pip install thirdparty/gaussian_splatting/submodules/forward_full
 # Install for Forward Lite - Ours-Lite (speed up testing)
 pip install thirdparty/gaussian_splatting/submodules/forward_lite
 
@@ -70,6 +76,7 @@ cd ../../SpacetimeGaussians
 # Preprocess
 #sudo apt-get install xvfb # on server, needed even with opencv-headless
 #xvfb-run python script/pre_n3d.py --videopath ../dataset/Neural3D/flame_steak --downscale 2 
+# extract frame in flame_steak dir
 python script/pre_n3d.py --videopath ../dataset/Neural3D/flame_steak
 
 # Train

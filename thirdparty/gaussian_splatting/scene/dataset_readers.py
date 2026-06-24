@@ -162,6 +162,7 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, near, far, 
             image_path = image_path.replace("colmap_"+str(startime), "colmap_{}".format(j), 1)
             assert os.path.exists(image_path), "Image {} does not exist!".format(image_path)
             image = Image.open(image_path)
+            image.load()
             if j == startime:
                 # cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image, image_path=image_path, image_name=image_name, width=width, height=height, near=near, far=far, timestamp=(j-startime)/duration, pose=hpposes[sortednamedict[os.path.basename(extr.name)]], hpdirecitons=hpdirecitons,cxr=0.0, cyr=0.0)
                 cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image, image_path=image_path, image_name=image_name, width=width, height=height, near=near, far=far, timestamp=(j-startime)/duration, pose=1, hpdirecitons=1,cxr=0.0, cyr=0.0)
@@ -240,9 +241,8 @@ def readColmapCamerasTechnicolor(cam_extrinsics, cam_intrinsics, images_folder, 
             
             assert os.path.exists(image_path), "Image {} does not exist!".format(image_path)
 
-            
             image = Image.open(image_path)
-
+            image.load()
 
             if j == startime:
                 cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image, image_path=image_path, image_name=image_name, width=width, height=height, near=near, far=far, timestamp=(j-startime)/duration, pose=1, hpdirecitons=1, cxr=cxr, cyr=cyr)
@@ -443,6 +443,7 @@ def readColmapCamerasImmersive(cam_extrinsics, cam_intrinsics, images_folder, ne
                 image_path = image_path.replace("_S14","")
             assert os.path.exists(image_path), "Image {} does not exist!".format(image_path)
             image = Image.open(image_path)
+            image.load()
             if j == startime:
                 cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image, image_path=image_path, image_name=image_name, width=width, height=height, near=near, far=far, timestamp=(j-startime)/duration, pose=1, hpdirecitons=1, cxr=cxr, cyr=cyr)
             else:
@@ -544,8 +545,9 @@ def readColmapCamerasImmersiveTestonly(cam_extrinsics, cam_intrinsics, images_fo
 
             if image_name == "camera_0001":
                 image = Image.open(image_path)
+                image.load()
             else:
-                image = None 
+                image = None
             if j == startime:
                 cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image, image_path=image_path, image_name=image_name, width=width, height=height, near=near, far=far, timestamp=(j-startime)/duration, pose=1, hpdirecitons=1, cxr=cxr, cyr=cyr)
             else:
@@ -961,8 +963,8 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             image_path = os.path.join(path, cam_name)
             image_name = Path(cam_name).stem
             image = Image.open(image_path)
-
             im_data = np.array(image.convert("RGBA"))
+            image = None
 
             bg = np.array([1,1,1]) if white_background else np.array([0, 0, 0])
 
@@ -1101,8 +1103,9 @@ def readColmapCamerasImmersivev2Testonly(cam_extrinsics, cam_intrinsics, images_
 
             if image_name == "camera_0001":
                 image = Image.open(image_path)
+                image.load()
             else:
-                image = None 
+                image = None
             if j == startime:
                 cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image, image_path=image_path, image_name=image_name, width=width, height=height, near=near, far=far, timestamp=(j-startime)/duration, pose=1, hpdirecitons=1, cxr=cxr, cyr=cyr)
             else:
@@ -1191,6 +1194,7 @@ def readColmapCamerasImmersivev2(cam_extrinsics, cam_intrinsics, images_folder, 
             
             assert os.path.exists(image_path), "Image {} does not exist!".format(image_path)
             image = Image.open(image_path)
+            image.load()
             if j == startime:
                 cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image, image_path=image_path, image_name=image_name, width=width, height=height, near=near, far=far, timestamp=(j-startime)/duration, pose=1, hpdirecitons=hpdirecitons, cxr=cxr, cyr=cyr)
             else:
